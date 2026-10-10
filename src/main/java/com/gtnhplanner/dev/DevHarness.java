@@ -91,6 +91,9 @@ public final class DevHarness {
         FMLCommonHandler.instance()
             .bus()
             .register(DevRecorder.INSTANCE);
+        FMLCommonHandler.instance()
+            .bus()
+            .register(DevReplay.INSTANCE);
         if (cpw.mods.fml.common.Loader.isModLoaded("gregtech")) FMLCommonHandler.instance()
             .bus()
             .register(DevWorld.INSTANCE);
@@ -350,6 +353,148 @@ public final class DevHarness {
                         Float.parseFloat(q.getOrDefault("panY", "0")));
                     return ok();
                 });
+            case "/film":
+                // Filming: the tour's cursor builds a polyethylene line for the trailer (ui/tutorial/Film); stopped and
+                // followed as the tour is (tutorial?stop=1, tutorial).
+                requireWorld();
+                return onClient(() -> {
+                    com.gtnhplanner.ui.tutorial.Tutorial.startFilm();
+                    return Map.of("where", com.gtnhplanner.ui.tutorial.Tutorial.where());
+                });
+            case "/rebuild":
+                // Filming: a finished plan (file=<plan JSON, code or link>, from the repo root) built again by the
+                // tour's cursor (ui/tutorial/Rebuild); seed= picks the take. Followed and stopped as the tour is.
+                requireWorld(); {
+                java.io.File f = new java.io.File(q.get("file"));
+                if (!f.isAbsolute()) f = new java.io.File(new java.io.File(mc.mcDataDir, "../.."), q.get("file"));
+                final String text = java.nio.file.Files.readString(f.toPath());
+                final long seed = Long.parseLong(q.getOrDefault("seed", "1"));
+                return onClient(() -> {
+                    final com.gtnhplanner.importer.FfConverter.Result result = com.gtnhplanner.importer.game.FactoryFlowImport
+                        .importFromText(text);
+                    com.gtnhplanner.ui.tutorial.Tutorial.startRebuild(result.graph(), seed);
+                    return Map.of(
+                        "plan",
+                        result.graph()
+                            .getName(),
+                        "cards",
+                        result.graph()
+                            .getNodes()
+                            .size(),
+                        "drawers",
+                        result.graph()
+                            .getDrawers()
+                            .size(),
+                        "where",
+                        com.gtnhplanner.ui.tutorial.Tutorial.where());
+                });
+            }
+            case "/replay":
+                // Filming: rebuild the open plan a card at a time (DevReplay). replay?ms=400[&order=left][&frame=recent
+                // &recent=6]; replay?stop=1; replay alone says how far it is.
+                if (q.containsKey("stop")) return onClient(DevReplay.INSTANCE::stop);
+                if (!q.containsKey("ms")) return onClient(DevReplay.INSTANCE::status);
+                return onClient(
+                    () -> DevReplay.INSTANCE.start(
+                        Long.parseLong(q.get("ms")),
+                        !"left".equals(q.get("order")),
+                        !"recent".equals(q.get("frame")),
+                        Integer.parseInt(q.getOrDefault("recent", "6"))));
+            case "/planpicture": {
+                // The Share key's Screenshot..., straight to a PNG: planpicture[?detail=simple][&name=1][&flows=1].
+                final java.util.concurrent.CompletableFuture<Object> done = new java.util.concurrent.CompletableFuture<>();
+                onClient(() -> {
+                    final com.gtnhplanner.ui.BoardScreen b = DevBoard.screen();
+                    if (b == null) {
+                        done.complete(error("open a plan on the board first"));
+                        return ok();
+                    }
+                    final com.gtnhplanner.ui.canvas.PlanPicture.Options o = new com.gtnhplanner.ui.canvas.PlanPicture.Options(
+                        "simple".equals(q.get("detail")) ? com.gtnhplanner.ui.canvas.PlanPicture.Detail.SIMPLE
+                            : com.gtnhplanner.ui.canvas.PlanPicture.Detail.DETAILED,
+                        "1".equals(q.get("name")),
+                        "1".equals(q.get("flows")));
+                    com.gtnhplanner.ui.canvas.PlanPicture.take(
+                        b.canvas(),
+                        o,
+                        image -> com.gtnhplanner.ui.canvas.PlanPicture.save(
+                            image,
+                            b.session()
+                                .graph()
+                                .getName(),
+                            file -> done.complete(
+                                Map.of(
+                                    "path",
+                                    file.getAbsolutePath(),
+                                    "width",
+                                    image.getWidth(),
+                                    "height",
+                                    image.getHeight())),
+                            why -> done.complete(error(why))),
+                        why -> done.complete(error(why)));
+                    return ok();
+                });
+                return done.get(60, java.util.concurrent.TimeUnit.SECONDS);
+            }
+            case "/minimap":
+                // Filming: minimap?centre=1 draws the minimap in the middle of the screen, centre=0 back in its corner;
+                // on=, size= (the settings' size step), zoom= (its zoom step) and circle= set the gear's minimap rows.
+                return onClient(() -> {
+                    if (q.containsKey("centre"))
+                        com.gtnhplanner.ui.world.Minimap.devCentred = !"0".equals(q.get("centre"));
+                    if (q.containsKey("on")) com.gtnhplanner.ui.PlannerSettings.setMinimap(!"0".equals(q.get("on")));
+                    if (q.containsKey("size"))
+                        com.gtnhplanner.ui.PlannerSettings.setMinimapSizeIndex(Integer.parseInt(q.get("size")));
+                    if (q.containsKey("zoom"))
+                        com.gtnhplanner.ui.PlannerSettings.setMinimapZoomIndex(Integer.parseInt(q.get("zoom")));
+                    if (q.containsKey("circle"))
+                        com.gtnhplanner.ui.PlannerSettings.setMinimapCircle("1".equals(q.get("circle")));
+                    return Map.of(
+                        "centre",
+                        com.gtnhplanner.ui.world.Minimap.devCentred,
+                        "on",
+                        com.gtnhplanner.ui.PlannerSettings.minimap(),
+                        "size",
+                        com.gtnhplanner.ui.PlannerSettings.minimapSize());
+                });
+            case "/newworld": {
+                // Filming somewhere real: leaves this world for a creative one of normal terrain (made when new, with
+                // seed= if given): newworld?name=plannh-trailer&seed=123. Plans are per world.
+                final String name = arg(q, "name");
+                final long seed = q.containsKey("seed") ? Long.parseLong(q.get("seed"))
+                    : new java.util.Random().nextLong();
+                return onClient(() -> {
+                    // Two calls: the first leaves this world; starting the next before the last server has stopped
+                    // trips mods' world data (AE2's), so the second, made out of the world, starts it.
+                    if (mc.theWorld != null) {
+                        mc.theWorld.sendQuittingDisconnectingPacket();
+                        mc.loadWorld(null);
+                        mc.displayGuiScreen(new net.minecraft.client.gui.GuiMainMenu());
+                        return Map.of("left", true, "next", "call newworld again in a few seconds");
+                    }
+                    WorldSettings settings = null;
+                    if (mc.getSaveLoader()
+                        .getWorldInfo(name) == null) {
+                        settings = new WorldSettings(
+                            seed,
+                            WorldSettings.GameType.CREATIVE,
+                            true,
+                            false,
+                            WorldType.DEFAULT);
+                        settings.enableCommands();
+                    }
+                    mc.displayGuiScreen(null);
+                    mc.launchIntegratedServer(name, name, settings);
+                    return Map.of("world", name, "seed", seed);
+                });
+            }
+            case "/seethrough":
+                // The gear's See-through (0 solid to 100), for recording: seethrough?percent=0; none: only reads it.
+                return onClient(() -> {
+                    if (q.containsKey("percent"))
+                        com.gtnhplanner.ui.PlannerSettings.setSeeThrough(Integer.parseInt(q.get("percent")));
+                    return Map.of("percent", com.gtnhplanner.ui.PlannerSettings.seeThrough());
+                });
             case "/sound":
                 // The master volume, 0 to 1 (mc.sh starts the game at PLANNH_DEV_SOUND); no volume: just report it.
                 return onClient(() -> {
@@ -507,13 +652,16 @@ public final class DevHarness {
                 }
                 return DevPerf.stop();
             case "/record":
-                // Demo videos: record?start=<name>&fps=24&width=1280 writes frames to recordings/<name>/;
-                // record?stop=1.
+                // Demo videos: record?start=<name>&fps=24&width=1280[&threads=3&quality=0.92&cursor=0] writes
+                // frames to recordings/<name>/; record?stop=1.
                 if (q.containsKey("start")) return onClient(
                     () -> DevRecorder.INSTANCE.start(
                         q.get("start"),
                         Integer.parseInt(q.getOrDefault("fps", "24")),
-                        Integer.parseInt(q.getOrDefault("width", "1280"))));
+                        Integer.parseInt(q.getOrDefault("width", "1280")),
+                        Integer.parseInt(q.getOrDefault("threads", "3")),
+                        Float.parseFloat(q.getOrDefault("quality", "0.92")),
+                        !"0".equals(q.get("cursor"))));
                 return DevRecorder.INSTANCE.stop();
             case "/look":
                 // Turn the player: yaw (0 south, 90 west, 180 north, 270 east) and pitch (down positive).

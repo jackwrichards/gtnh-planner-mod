@@ -43,6 +43,9 @@ public final class Minimap {
     @Nullable
     private PlanSnapshot.Line wire;
 
+    /** Set by the dev harness for filming: the map in the middle of the screen. Never set in play. */
+    public static volatile boolean devCentred;
+
     private Minimap() {}
 
     /** Back to where the board's view was. */
@@ -100,14 +103,19 @@ public final class Minimap {
     public static int[] bounds(final ScaledResolution sr) {
         if (!PlannerSettings.minimap()) return null;
         final int size = PlannerSettings.minimapSize(), margin = 6;
-        final int x0 = switch (PlannerSettings.minimapCorner()) {
+        int x0 = switch (PlannerSettings.minimapCorner()) {
             case TOP_LEFT, BOTTOM_LEFT -> margin;
             default -> sr.getScaledWidth() - margin - size;
         };
-        final int y0 = switch (PlannerSettings.minimapCorner()) {
+        int y0 = switch (PlannerSettings.minimapCorner()) {
             case TOP_LEFT, TOP_RIGHT -> margin;
             default -> sr.getScaledHeight() - margin - size - 40;
         };
+        if (devCentred) {
+            // Filming only (the dev harness's minimap?centre=1): in the middle of the screen, whatever the corner.
+            x0 = (sr.getScaledWidth() - size) / 2;
+            y0 = (sr.getScaledHeight() - size) / 2;
+        }
         return new int[] { x0 - 2, y0 - 2, size + 4, size + 4 + (PlannerSettings.minimapCircle() ? 24 : 0) };
     }
 

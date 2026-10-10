@@ -38,7 +38,11 @@ public final class Tutorial {
     private long lastDraw = -1;
 
     private Tutorial() {
-        director = new Director(Script.beats(), sandbox);
+        this(Script.beats());
+    }
+
+    private Tutorial(final java.util.List<Tour.Beat> beats) {
+        director = new Director(beats, sandbox);
         callout = new Callout(director, Tutorial::stop);
     }
 
@@ -58,6 +62,24 @@ public final class Tutorial {
         if (current == null) startAt(0);
     }
 
+    /**
+     * The dev harness, filming: plays {@link Film} (a build for the trailer) in place of the tour, the same way and in
+     * the same sandbox. Stopped like the tour.
+     */
+    public static void startFilm() {
+        if (current != null || Minecraft.getMinecraft().theWorld == null) return;
+        begin(() -> new Tutorial(Film.beats()), 0);
+    }
+
+    /**
+     * The dev harness, filming: a finished plan built again by the tour's cursor ({@link Rebuild}), a take a seed (the
+     * same seed, the same take). Stopped like the tour.
+     */
+    public static void startRebuild(final com.gtnhplanner.data.flowchart.Graph plan, final long seed) {
+        if (current != null || Minecraft.getMinecraft().theWorld == null) return;
+        begin(() -> new Tutorial(Rebuild.beats(plan, seed)), 0);
+    }
+
     /** Starts the tour at a beat (the dev harness), or goes there when it is running. */
     public static void startAt(final int beat) {
         final Minecraft mc = Minecraft.getMinecraft();
@@ -66,9 +88,13 @@ public final class Tutorial {
             current.director.goTo(beat);
             return;
         }
+        com.gtnhplanner.ui.PlannerSettings.setTourOffered(true);
+        begin(Tutorial::new, beat);
+    }
+
+    private static void begin(final java.util.function.Supplier<Tutorial> make, final int beat) {
         try {
-            com.gtnhplanner.ui.PlannerSettings.setTourOffered(true);
-            current = new Tutorial();
+            current = make.get();
             current.sandbox.enter();
             GtnhPlanner.LOG.info("[tutorial] started");
             current.director.goTo(beat);
