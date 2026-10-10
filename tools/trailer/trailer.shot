@@ -1,0 +1,157 @@
+# The trailer, about a minute: the tour's run as it was on screen (the whole screen, no camera moves), two community
+# plans built again by the tour's cursor and sped up (the whole screen too), the minimap over a real world, the library,
+# and finished plans shown off where nothing moves (a steady pan or pull, nothing else). A few captions, not one a shot.
+# Cut to track.mjs (90 BPM, a bar is 8/3 s = 4b).
+#   node tools/trailer/track.mjs build/trailer/track.wav
+#   java -Xmx10g tools/trailer/Trailer.java tools/trailer/trailer.shot [--stills | --every 1]
+#
+# Footage (run/client/recordings/, from the dev harness; see README.md): tour2 (the tour), nitro and platbuild
+# (call 'rebuild?file=...', at 4K), minimapworld (filmed centred in a normal world); the pictures are plans' own (call
+# planpicture): the tour's plan at the Arrange step, at 4K, and the Platline.
+
+size 1920 1080
+fps 60
+bpm 90
+duration 61.5
+source run/client/recordings/tour2
+out build/trailer/trailer.mp4
+stilldir build/trailer/stills
+set audio build/trailer/track.wav
+set audiogain -2.5dB
+set audiofade 2.5
+
+title GTNH Planner
+set wordscale 8
+set dotstep 40
+set dotsize 4
+set captionscale 4
+
+# The picture as it is: no vignette, bloom, depth of field or grain.
+set vignette 0
+set bloom 0
+set grain 0
+set focusr 5
+set blendframes 0
+set dissolve 0.3
+key exposure 0 0
+key exposure 0.8 1
+
+# Shown off where nothing moves: the tour's tower and turbine, a steady pan across them.
+shot 0 8b showcase
+  source run/client/screenshots/Plan_2_2026-10-10_15.05.45.png
+  set linear 1
+  key zoom 0 1.02
+  key zoom 8b 1.06
+  key cx 0 0.555
+  key cx 8b 0.76
+  key cy 0 0.5
+  set dissolve 0
+end
+caption 0.8 4.4 This is *GTNH Planner*.
+
+# The features, as on screen.
+shot 8b 12b nei
+  remap 0 s2+3.3
+  remap 4b s3+1.9
+  key zoom 0 1
+end
+caption 5.8 7.9 Find a recipe in *NEI*, hit the plan button.
+
+shot 12b 16b card
+  remap 0 s3+2.15
+  remap 0.95 s3+3.15
+  remap 1.2 s4+0.3
+  remap 4b s4+2.4
+  key zoom 0 1
+end
+
+shot 16b 20b rate
+  src s6-0.1 s6+2.5
+  key zoom 0 1
+end
+caption 11.1 13.2 Ask for a *rate*. It does the maths.
+
+shot 20b 24b tower
+  src s16+0.3 s16+4.6
+  key zoom 0 1
+end
+
+shot 24b 28b power
+  src s20+2.2 s20+6.6
+  key zoom 0 1
+end
+
+shot 28b 32b arrange
+  src s21-0.05 s21+2.6
+  key zoom 0 1
+end
+
+# A power plant from the library, built again by the cursor, the whole screen, sped up.
+shot 32b 48b nitro
+  source run/client/recordings/nitro
+  remap 0 9
+  remap 9.6 198
+  remap 16b 205.5
+  set shutter 1
+  key zoom 0 1
+end
+caption 21.9 26.0 A whole *power plant*, built from scratch.
+badge 21.7 31.9 *20x* speed
+
+shot 48b 52b note
+  src s22+0.4 s22+3.0
+  key zoom 0 1
+end
+
+shot 52b 56b minimap
+  source run/client/recordings/minimapworld
+  src 1.8 7.6
+  key zoom 0 1
+end
+captiontop 35.2 37.2 Your plan comes with you on the *minimap*.
+
+# The library reloads as the tour types its search; this is the second its tiles all show, held.
+shot 56b 60b library
+  src 118.72 119.42
+  set blendframes 1
+  key zoom 0 1
+end
+
+# The Platline, built again, the whole screen, sped up.
+shot 60b 80b platline
+  source run/client/recordings/platbuild
+  src 9 400
+  set shutter 1
+  key zoom 0 1
+end
+badge 40.1 53.2 *29x* speed
+
+# The finished line, nothing moving: a steady pull back over all of it. Then the name.
+shot 80b 84b finale
+  source run/client/screenshots/Platline_2_2026-10-10_13.03.58.png
+  set linear 1
+  key zoom 0 2.3
+  key zoom 4b 1.28
+  key cx 0 0.42
+  key cx 4b 0.5
+  key cy 0 0.46
+  key cy 4b 0.5
+end
+
+shot 84b 61.5 end
+  source run/client/screenshots/Platline_2_2026-10-10_13.03.58.png
+  key zoom 0 1.28
+  key cx 0 0.5
+  key cy 0 0.5
+  key endbg 0 0
+  key endbg 1.0 1
+  key endcard 0.6 0
+  key endcard 1.9 1
+  key master 3.9 1
+  key master 5.5 0
+  set dissolve 0
+end
+
+still 37.6
+still 38.8
+still 39.8

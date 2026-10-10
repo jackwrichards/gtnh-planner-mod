@@ -266,3 +266,7 @@ tools/dev/board-check.sh  # GT runs: end-to-end board check (recipe, port drag, 
   mid-action. Gate input and restarts on `tools/dev/mc.sh idle`: it succeeds when the game window is unfocused or
   nothing has come from their mouse or keyboard for 30 s (`idleSeconds` in `call status`). A focused window alone
   means nothing: the game takes focus when it starts and keeps it while they work elsewhere.
+- Trailer footage and the cut: `tools/trailer/README.md`. The game records its own frames (`call record`), the tour's
+  cursor can build any finished plan as a player would (`call 'rebuild?file=...'`, `ui/tutorial/Rebuild`), and
+  `tools/trailer/Trailer.java` cuts a shot file (`trailer.shot`) to synthesized music (`track.mjs`). The owner wants it
+  plain: the whole screen, no tilt or drifting camera, few captions.
