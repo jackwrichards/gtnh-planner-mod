@@ -22,3 +22,8 @@ test {
         exceptionFormat 'short'
     }
 }
+
+// Checkstyle (the wildcard import check) runs out of its default heap on the tour's Callout.java: give it room.
+tasks.withType(Checkstyle).configureEach {
+    maxHeapSize = '1g'
+}
